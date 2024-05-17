@@ -279,7 +279,7 @@ pub struct DocProcessorCounters {
     /// into 4 categories:
     /// - number of docs that could not be parsed.
     /// - number of docs that could not be transformed.
-    /// - number of docs for which the doc mapper returnd an error.
+    /// - number of docs for which the doc mapper returned an error.
     /// - number of valid docs.
     pub num_doc_parse_errors: AtomicU64,
     pub num_transform_errors: AtomicU64,

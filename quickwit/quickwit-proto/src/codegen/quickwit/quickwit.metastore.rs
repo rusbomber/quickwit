@@ -237,8 +237,8 @@ pub struct DeleteTask {
 pub struct DeleteQuery {
     /// Index ID.
     #[prost(message, optional, tag = "1")]
+    #[schema(value_type = string)]
     #[serde(alias = "index_id")]
-    #[schema(value_type = String)]
     pub index_uid: ::core::option::Option<crate::types::IndexUid>,
     /// If set, restrict search to documents with a `timestamp >= start_timestamp`.
     #[prost(int64, optional, tag = "2")]
