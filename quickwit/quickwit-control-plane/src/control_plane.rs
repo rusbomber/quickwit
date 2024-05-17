@@ -776,9 +776,9 @@ impl Handler<GetOrCreateOpenShardsRequest> for ControlPlane {
             .get_or_create_open_shards(request, &mut self.model, ctx.progress())
             .await
         {
-            Ok(resp) => {
+            Ok(response) => {
                 let _rebuild_plan_waiter = self.rebuild_plan_debounced(ctx);
-                Ok(Ok(resp))
+                Ok(Ok(response))
             }
             Err(metastore_error) => convert_metastore_error(metastore_error),
         }
@@ -1046,7 +1046,7 @@ mod tests {
         ListShardsResponse, ListShardsSubresponse, MetastoreError, MockMetastoreService,
         OpenShardSubresponse, OpenShardsResponse, SourceType,
     };
-    use quickwit_proto::types::Position;
+    use quickwit_proto::types::{DocMappingUid, Position};
     use tokio::sync::Mutex;
 
     use super::*;
@@ -1693,7 +1693,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_fill_shard_table_position_from_metastore_on_startup() {
-        quickwit_common::setup_logging_for_tests();
         let universe = Universe::with_accelerated_time();
         let node_id = NodeId::new("control-plane-node".to_string());
         let indexer_pool = IndexerPool::default();
@@ -1908,6 +1907,7 @@ mod tests {
                             leader_id: "node1".to_string(),
                             follower_id: None,
                             shard_state: ShardState::Open as i32,
+                            doc_mapping_uid: Some(DocMappingUid::default()),
                             publish_position_inclusive: None,
                             publish_token: None,
                         }],
@@ -2037,6 +2037,7 @@ mod tests {
                             leader_id: "node1".to_string(),
                             follower_id: None,
                             shard_state: ShardState::Open as i32,
+                            doc_mapping_uid: Some(DocMappingUid::default()),
                             publish_position_inclusive: None,
                             publish_token: None,
                         }],
@@ -2324,6 +2325,7 @@ mod tests {
                         leader_id: "test-ingester".to_string(),
                         follower_id: None,
                         shard_state: ShardState::Open as i32,
+                        doc_mapping_uid: Some(DocMappingUid::default()),
                         publish_position_inclusive: Some(Position::Beginning),
                         publish_token: None,
                     }),
@@ -2477,6 +2479,7 @@ mod tests {
                         leader_id: "test-ingester".to_string(),
                         follower_id: None,
                         shard_state: ShardState::Open as i32,
+                        doc_mapping_uid: Some(DocMappingUid::default()),
                         publish_position_inclusive: Some(Position::Beginning),
                         publish_token: None,
                     }),

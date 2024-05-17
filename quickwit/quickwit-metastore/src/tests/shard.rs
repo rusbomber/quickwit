@@ -26,7 +26,7 @@ use quickwit_proto::metastore::{
     ListShardsRequest, ListShardsSubrequest, MetastoreError, MetastoreService, OpenShardSubrequest,
     OpenShardsRequest, PublishSplitsRequest,
 };
-use quickwit_proto::types::{IndexUid, Position, ShardId, SourceId};
+use quickwit_proto::types::{DocMappingUid, IndexUid, Position, ShardId, SourceId};
 
 use super::DefaultForTest;
 use crate::checkpoint::{IndexCheckpointDelta, PartitionId, SourceCheckpointDelta};
@@ -138,6 +138,7 @@ pub async fn test_metastore_open_shards<
             shard_id: Some(ShardId::from(1)),
             leader_id: "test-ingester-foo".to_string(),
             follower_id: Some("test-ingester-bar".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
         }],
     };
     let open_shards_response = metastore.open_shards(open_shards_request).await.unwrap();
@@ -153,6 +154,7 @@ pub async fn test_metastore_open_shards<
     assert_eq!(shard.shard_state(), ShardState::Open);
     assert_eq!(shard.leader_id, "test-ingester-foo");
     assert_eq!(shard.follower_id(), "test-ingester-bar");
+    assert_eq!(shard.doc_mapping_uid(), DocMappingUid::default(),);
     assert_eq!(shard.publish_position_inclusive(), Position::Beginning);
     assert!(shard.publish_token.is_none());
 
@@ -165,6 +167,7 @@ pub async fn test_metastore_open_shards<
             shard_id: Some(ShardId::from(1)),
             leader_id: "test-ingester-foo".to_string(),
             follower_id: Some("test-ingester-bar".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
         }],
     };
     let open_shards_response = metastore.open_shards(open_shards_request).await.unwrap();
@@ -206,6 +209,7 @@ pub async fn test_metastore_acquire_shards<
             shard_state: ShardState::Closed as i32,
             leader_id: "test-ingester-foo".to_string(),
             follower_id: Some("test-ingester-bar".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             publish_token: Some("test-publish-token-foo".to_string()),
         },
@@ -216,6 +220,7 @@ pub async fn test_metastore_acquire_shards<
             shard_state: ShardState::Open as i32,
             leader_id: "test-ingester-bar".to_string(),
             follower_id: Some("test-ingester-qux".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             publish_token: Some("test-publish-token-bar".to_string()),
         },
@@ -226,6 +231,7 @@ pub async fn test_metastore_acquire_shards<
             shard_state: ShardState::Open as i32,
             leader_id: "test-ingester-qux".to_string(),
             follower_id: Some("test-ingester-baz".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             publish_token: None,
         },
@@ -236,6 +242,7 @@ pub async fn test_metastore_acquire_shards<
             shard_state: ShardState::Open as i32,
             leader_id: "test-ingester-baz".to_string(),
             follower_id: Some("test-ingester-tux".to_string()),
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             publish_token: None,
         },
@@ -326,6 +333,7 @@ pub async fn test_metastore_list_shards<
                 shard_state: ShardState::Open as i32,
                 leader_id: "test-ingester-foo".to_string(),
                 follower_id: Some("test-ingester-bar".to_string()),
+                doc_mapping_uid: Some(DocMappingUid::default()),
                 publish_position_inclusive: Some(Position::Beginning),
                 publish_token: Some("test-publish-token-foo".to_string()),
             },
@@ -336,6 +344,7 @@ pub async fn test_metastore_list_shards<
                 shard_state: ShardState::Closed as i32,
                 leader_id: "test-ingester-bar".to_string(),
                 follower_id: Some("test-ingester-qux".to_string()),
+                doc_mapping_uid: Some(DocMappingUid::default()),
                 publish_position_inclusive: Some(Position::Beginning),
                 publish_token: Some("test-publish-token-bar".to_string()),
             },
@@ -464,6 +473,7 @@ pub async fn test_metastore_delete_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(1)),
             shard_state: ShardState::Open as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             ..Default::default()
         },
@@ -472,6 +482,7 @@ pub async fn test_metastore_delete_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(2)),
             shard_state: ShardState::Closed as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Beginning),
             ..Default::default()
         },
@@ -480,6 +491,7 @@ pub async fn test_metastore_delete_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(3)),
             shard_state: ShardState::Closed as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::Eof(None)),
             ..Default::default()
         },
@@ -606,6 +618,7 @@ pub async fn test_metastore_apply_checkpoint_delta_v2_single_shard<
         source_id: test_index.source_id.clone(),
         shard_id: Some(ShardId::from(0)),
         shard_state: ShardState::Open as i32,
+        doc_mapping_uid: Some(DocMappingUid::default()),
         publish_position_inclusive: Some(Position::Beginning),
         publish_token: Some("test-publish-token-bar".to_string()),
         ..Default::default()
@@ -721,6 +734,7 @@ pub async fn test_metastore_apply_checkpoint_delta_v2_multi_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(0)),
             shard_state: ShardState::Open as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::offset(0u64)),
             publish_token: Some("test-publish-token-foo".to_string()),
             ..Default::default()
@@ -730,6 +744,7 @@ pub async fn test_metastore_apply_checkpoint_delta_v2_multi_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(1)),
             shard_state: ShardState::Open as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::offset(1u64)),
             publish_token: Some("test-publish-token-foo".to_string()),
             ..Default::default()
@@ -739,6 +754,7 @@ pub async fn test_metastore_apply_checkpoint_delta_v2_multi_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(2)),
             shard_state: ShardState::Open as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::offset(2u64)),
             publish_token: Some("test-publish-token-foo".to_string()),
             ..Default::default()
@@ -748,6 +764,7 @@ pub async fn test_metastore_apply_checkpoint_delta_v2_multi_shards<
             source_id: test_index.source_id.clone(),
             shard_id: Some(ShardId::from(3)),
             shard_state: ShardState::Open as i32,
+            doc_mapping_uid: Some(DocMappingUid::default()),
             publish_position_inclusive: Some(Position::offset(3u64)),
             publish_token: Some("test-publish-token-bar".to_string()),
             ..Default::default()
