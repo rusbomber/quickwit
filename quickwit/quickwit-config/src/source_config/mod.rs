@@ -323,6 +323,28 @@ pub struct PubSubSourceParams {
     pub max_messages_per_pull: Option<i32>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueueMessageType {
+    S3Notification,
+    // GcsNotification,
+    // RawData,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct QueueParams {
+    pub message_type: QueueMessageType,
+    pub deduplication_window_duration_sec: usize,
+    pub deduplication_window_max_messages: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct SqsSourceParams {
+    pub queue_url: String,
+    #[serde(flatten)]
+    pub queue_params: QueueParams,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum RegionOrEndpoint {
