@@ -130,7 +130,7 @@ impl Shards {
                     leader_id: subrequest.leader_id.clone(),
                     follower_id: subrequest.follower_id.clone(),
                     publish_position_inclusive: Some(Position::Beginning),
-                    publish_token: None,
+                    publish_token: subrequest.publish_token.clone(),
                 };
                 mutation_occurred = true;
                 entry.insert(shard.clone());
@@ -332,6 +332,7 @@ mod tests {
             shard_id: Some(ShardId::from(1)),
             leader_id: "leader_id".to_string(),
             follower_id: None,
+            publish_token: None,
         };
         let MutationOccurred::Yes(subresponse) = shards.open_shard(subrequest.clone()).unwrap()
         else {
@@ -346,6 +347,7 @@ mod tests {
         assert_eq!(shard.shard_state(), ShardState::Open);
         assert_eq!(shard.leader_id, "leader_id");
         assert_eq!(shard.follower_id, None);
+        assert_eq!(shard.publish_token, None);
         assert_eq!(shard.publish_position_inclusive(), Position::Beginning);
 
         let MutationOccurred::No(subresponse) = shards.open_shard(subrequest).unwrap() else {
@@ -363,6 +365,7 @@ mod tests {
             shard_id: Some(ShardId::from(2)),
             leader_id: "leader_id".to_string(),
             follower_id: Some("follower_id".to_string()),
+            publish_token: Some("publish_token".to_string()),
         };
         let MutationOccurred::Yes(subresponse) = shards.open_shard(subrequest).unwrap() else {
             panic!("Expected `MutationOccured::No`");

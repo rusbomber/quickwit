@@ -19,20 +19,21 @@
 
 use std::time::{Duration, Instant};
 
+use anyhow::Context;
 use async_trait::async_trait;
 use aws_sdk_sqs::config::{BehaviorVersion, SharedAsyncSleep};
-use aws_sdk_sqs::error::{DisplayErrorContext, SdkError};
-use aws_sdk_sqs::operation::change_message_visibility::ChangeMessageVisibilityError;
-use aws_sdk_sqs::operation::delete_message_batch::DeleteMessageBatchError;
-use aws_sdk_sqs::operation::receive_message::ReceiveMessageError;
+// use aws_sdk_sqs::error::{DisplayErrorContext, SdkError};
+// use aws_sdk_sqs::operation::change_message_visibility::ChangeMessageVisibilityError;
+// use aws_sdk_sqs::operation::delete_message_batch::DeleteMessageBatchError;
+// use aws_sdk_sqs::operation::receive_message::ReceiveMessageError;
 use aws_sdk_sqs::types::{DeleteMessageBatchRequestEntry, MessageSystemAttributeName};
 use aws_sdk_sqs::{Client, Config};
 use itertools::Itertools;
 use quickwit_aws::get_aws_config;
 use quickwit_storage::OwnedBytes;
 
-use super::error::{QueueError, QueueErrorKind, QueueResult};
-use super::{Queue, QueueMessage, QueueMessageMetadata};
+use super::message::MessageMetadata;
+use super::{Queue, RawMessage};
 
 #[derive(Debug)]
 pub struct SqsQueue {
@@ -52,10 +53,10 @@ impl SqsQueue {
 
 #[async_trait]
 impl Queue for SqsQueue {
-    async fn receive(&self) -> QueueResult<Vec<QueueMessage>> {
+    async fn receive(&self) -> anyhow::Result<Vec<RawMessage>> {
         let visibility_timeout_sec = 120;
         // TODO: We estimate the message deadline using the start of the
-        // ReceiveMessage request. This might be overly pessimistic as he docs
+        // ReceiveMessage request. This might be overly pessimistic: the docs
         // state that it starts when the message is returned.
         let initial_deadline = Instant::now() + Duration::from_secs(visibility_timeout_sec as u64);
         let res = self
@@ -69,32 +70,38 @@ impl Queue for SqsQueue {
             .send()
             .await?;
 
-        let messages = res
-            .messages
+        res.messages
             .unwrap_or_default()
             .into_iter()
-            .map(|m| QueueMessage {
-                metadata: QueueMessageMetadata {
-                    ack_id: m.receipt_handle.unwrap(),
-                    message_id: m.message_id.unwrap(),
-                    initial_deadline,
-                    delivery_attempts: m
-                        .attributes
-                        .unwrap()
-                        .get(&MessageSystemAttributeName::ApproximateReceiveCount)
-                        .unwrap()
-                        .parse()
-                        .unwrap(),
-                },
-                payload: OwnedBytes::new(m.body.unwrap().into_bytes()),
-                // TODO error classification instead of unwrap
+            .map(|m| {
+                let delivery_attempts: usize = m
+                    .attributes
+                    .as_ref()
+                    .and_then(|attrs| {
+                        attrs.get(&MessageSystemAttributeName::ApproximateReceiveCount)
+                    })
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                let ack_id = m
+                    .receipt_handle
+                    .context("missing receipt_handle in received message")?;
+                let message_id = m
+                    .message_id
+                    .context("missing message_id in received message")?;
+                Ok(RawMessage {
+                    metadata: MessageMetadata {
+                        ack_id,
+                        message_id,
+                        initial_deadline,
+                        delivery_attempts,
+                    },
+                    payload: OwnedBytes::new(m.body.unwrap_or(String::new()).into_bytes()),
+                })
             })
-            .collect();
-
-        Ok(messages)
+            .collect()
     }
 
-    async fn acknowledge(&self, ack_ids: &[&str]) -> QueueResult<()> {
+    async fn acknowledge(&self, ack_ids: &[&str]) -> anyhow::Result<()> {
         let entry_batches: Vec<_> = ack_ids
             .iter()
             .enumerate()
@@ -137,7 +144,7 @@ impl Queue for SqsQueue {
         &self,
         ack_id: &str,
         suggested_deadline: Duration,
-    ) -> QueueResult<Instant> {
+    ) -> anyhow::Result<Instant> {
         let visibility_timeout = std::cmp::min(suggested_deadline.as_secs() as i32, 43200);
         let new_deadline = Instant::now() + suggested_deadline;
         // TODO: retry if transient
@@ -168,62 +175,4 @@ pub async fn get_sqs_client() -> anyhow::Result<Client> {
     )));
 
     Ok(Client::from_conf(sqs_config.build()))
-}
-
-// TODO error conversions copied over from storage abstraction, simplify it
-
-impl<E> From<SdkError<E>> for QueueError
-where E: std::error::Error + ToQueueErrorKind + Send + Sync + 'static
-{
-    fn from(error: SdkError<E>) -> QueueError {
-        let error_kind = match &error {
-            SdkError::ConstructionFailure(_) => QueueErrorKind::Internal,
-            SdkError::DispatchFailure(failure) => {
-                if failure.is_io() {
-                    QueueErrorKind::Io
-                } else if failure.is_timeout() {
-                    QueueErrorKind::Timeout
-                } else {
-                    QueueErrorKind::Internal
-                }
-            }
-            SdkError::ResponseError(response_error) => {
-                match response_error.raw().status().as_u16() {
-                    404 /* NOT_FOUND */ => QueueErrorKind::NotFound,
-                    403 /* UNAUTHORIZED */ => QueueErrorKind::Unauthorized,
-                    _ => QueueErrorKind::Internal,
-                }
-            }
-            SdkError::ServiceError(service_error) => service_error.err().to_queue_error_kind(),
-            SdkError::TimeoutError(_) => QueueErrorKind::Timeout,
-            _ => QueueErrorKind::Internal,
-        };
-        let source = anyhow::anyhow!("{}", DisplayErrorContext(error));
-        error_kind.with_error(source)
-    }
-}
-
-pub trait ToQueueErrorKind {
-    fn to_queue_error_kind(&self) -> QueueErrorKind;
-}
-
-impl ToQueueErrorKind for ReceiveMessageError {
-    fn to_queue_error_kind(&self) -> QueueErrorKind {
-        match self {
-            ReceiveMessageError::QueueDoesNotExist(_) => QueueErrorKind::NotFound,
-            _ => QueueErrorKind::Service,
-        }
-    }
-}
-
-impl ToQueueErrorKind for DeleteMessageBatchError {
-    fn to_queue_error_kind(&self) -> QueueErrorKind {
-        QueueErrorKind::Service
-    }
-}
-
-impl ToQueueErrorKind for ChangeMessageVisibilityError {
-    fn to_queue_error_kind(&self) -> QueueErrorKind {
-        QueueErrorKind::Service
-    }
 }

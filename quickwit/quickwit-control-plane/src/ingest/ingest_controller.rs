@@ -716,6 +716,8 @@ impl IngestController {
                     shard_id: shard.shard_id.clone(),
                     leader_id: shard.leader_id.clone(),
                     follower_id: shard.follower_id.clone(),
+                    // Shards are acquired by the ingest sources
+                    publish_token: None,
                 }
             })
             .collect();

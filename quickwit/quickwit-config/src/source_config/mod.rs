@@ -81,6 +81,7 @@ impl SourceConfig {
             SourceParams::Kinesis(_) => SourceType::Kinesis,
             SourceParams::PubSub(_) => SourceType::PubSub,
             SourceParams::Pulsar(_) => SourceType::Pulsar,
+            SourceParams::Sqs(_) => SourceType::Sqs,
             SourceParams::Vec(_) => SourceType::Vec,
             SourceParams::Void(_) => SourceType::Void,
         }
@@ -97,6 +98,7 @@ impl SourceConfig {
             SourceParams::Kafka(params) => serde_json::to_value(params),
             SourceParams::Kinesis(params) => serde_json::to_value(params),
             SourceParams::Pulsar(params) => serde_json::to_value(params),
+            SourceParams::Sqs(params) => serde_json::to_value(params),
             SourceParams::Vec(params) => serde_json::to_value(params),
             SourceParams::Void(params) => serde_json::to_value(params),
         }
@@ -223,6 +225,7 @@ pub enum SourceParams {
     #[serde(rename = "pubsub")]
     PubSub(PubSubSourceParams),
     Pulsar(PulsarSourceParams),
+    Sqs(SqsSourceParams),
     Vec(VecSourceParams),
     Void(VoidSourceParams),
 }

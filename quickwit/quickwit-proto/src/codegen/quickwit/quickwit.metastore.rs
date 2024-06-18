@@ -335,6 +335,8 @@ pub struct OpenShardSubrequest {
     pub leader_id: ::prost::alloc::string::String,
     #[prost(string, optional, tag = "6")]
     pub follower_id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "7")]
+    pub publish_token: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -526,6 +528,8 @@ pub enum SourceType {
     Pulsar = 9,
     Vec = 10,
     Void = 11,
+    /// / Amazon SQS
+    Sqs = 12,
 }
 impl SourceType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -546,6 +550,7 @@ impl SourceType {
             SourceType::Pulsar => "SOURCE_TYPE_PULSAR",
             SourceType::Vec => "SOURCE_TYPE_VEC",
             SourceType::Void => "SOURCE_TYPE_VOID",
+            SourceType::Sqs => "SOURCE_TYPE_SQS",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -563,6 +568,7 @@ impl SourceType {
             "SOURCE_TYPE_PULSAR" => Some(Self::Pulsar),
             "SOURCE_TYPE_VEC" => Some(Self::Vec),
             "SOURCE_TYPE_VOID" => Some(Self::Void),
+            "SOURCE_TYPE_SQS" => Some(Self::Sqs),
             _ => None,
         }
     }

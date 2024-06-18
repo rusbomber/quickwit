@@ -47,6 +47,7 @@ mockall = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 tempfile = { workspace = true }
+time = { workspace = true }
 
 quickwit-actors = { workspace = true, features = ["testsuite"] }
 quickwit-cluster = { workspace = true, features = ["testsuite"] }

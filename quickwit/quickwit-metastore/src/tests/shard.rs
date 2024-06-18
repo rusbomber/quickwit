@@ -138,6 +138,7 @@ pub async fn test_metastore_open_shards<
             shard_id: Some(ShardId::from(1)),
             leader_id: "test-ingester-foo".to_string(),
             follower_id: Some("test-ingester-bar".to_string()),
+            publish_token: None,
         }],
     };
     let open_shards_response = metastore.open_shards(open_shards_request).await.unwrap();
@@ -165,6 +166,7 @@ pub async fn test_metastore_open_shards<
             shard_id: Some(ShardId::from(1)),
             leader_id: "test-ingester-foo".to_string(),
             follower_id: Some("test-ingester-bar".to_string()),
+            publish_token: Some("publish-token-baz".to_string()),
         }],
     };
     let open_shards_response = metastore.open_shards(open_shards_request).await.unwrap();
